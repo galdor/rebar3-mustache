@@ -109,10 +109,10 @@ render(InputPath, Context, Options, OutputPath) ->
 
 -spec format_error(any()) -> iolist().
 format_error({load_template, Reason, Path}) ->
-  io_lib:format("cannot load template ~s: ~p", [Path, Reason]);
+  io_lib:format("Cannot load template ~s: ~p", [Path, Reason]);
 format_error({render_template, Reason, Path}) ->
-  io_lib:format("cannot render template ~s: ~p", [Path, Reason]);
+  io_lib:format("Cannot render template ~s: ~p", [Path, Reason]);
 format_error({write_file, Reason, Path}) ->
-  io_lib:format("cannot write file ~s: ~p", [Path, Reason]);
+  io_lib:format("Cannot write file ~s: ~p", [Path, Reason]);
 format_error(Reason) ->
   io_lib:format("~p", [Reason]).
