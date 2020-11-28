@@ -1,0 +1,4 @@
+[{<<"mustache">>,
+  {git,"https://github.com/galdor/erl-mustache.git",
+       {ref,"ceed2bf2ba8e203e40d7903890fb472daef551df"}},
+  0}].
