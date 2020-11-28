@@ -14,14 +14,15 @@
 
 -module(rebar3_mustache_templates).
 
--export([output_path/2, render/4,
+-export([output_path/1, options/2, render/4,
          format_error/1]).
 
--spec output_path(file:name_all(), rebar3_mustache:template_options()) ->
-        file:name_all().
-output_path(_, #{output_path := OutputPath}) ->
+-spec output_path(rebar3_mustache:template()) -> file:name_all().
+output_path({InputPath, Data}) ->
+  output_path({InputPath, Data, #{}});
+output_path({_, _, #{output_path := OutputPath}}) ->
   OutputPath;
-output_path(InputPath, _) ->
+output_path({InputPath, _, _}) ->
   %% The default behaviour will generate "name.ext" from "name.ext.mustache"
   %% (or any other final extension).
   case filename:rootname(InputPath) of
@@ -33,13 +34,27 @@ output_path(InputPath, _) ->
       OutputPath
   end.
 
+-spec options(rebar3_mustache:template(), rebar3_mustache:config()) ->
+        rebar3_mustache:options().
+options({InputPath, Data}, Config) ->
+  options({InputPath, Data, #{}}, Config);
+options({_, _, Options}, Config) ->
+  GlobalMustacheOptions = maps:get(mustache_options, Config, #{}),
+  TemplateMustacheOptions = maps:get(mustache_options, Options, #{}),
+  MustacheOptions = maps:merge(rebar3_mustache:default_mustache_options(),
+                               maps:merge(GlobalMustacheOptions,
+                                          TemplateMustacheOptions)),
+  Options#{mustache_options => MustacheOptions}.
+
 -spec render(file:name_all(), mustache:context(),
              rebar3_mustache:template_options(), file:name_all()) ->
         ok | {error, term()}.
 render(InputPath, Context, Options, OutputPath) ->
+  MustacheOptions = maps:get(mustache_options, Options,
+                             rebar3_mustache:default_mustache_options()),
   case mustache:load_template(InputPath, {file, InputPath}, #{}) of
     {ok, Template} ->
-      case mustache:render_template(Template, Context, Options) of
+      case mustache:render_template(Template, Context, MustacheOptions) of
         {ok, Data} ->
           case file:write_file(OutputPath, Data) of
             ok ->

@@ -14,16 +14,25 @@
 
 -module(rebar3_mustache).
 
--export([init/1]).
+-export([init/1,
+         default_mustache_options/0]).
 
 -export_type([config/0]).
 
--type config() :: #{templates => [template_config()]}.
+-type config() :: #{mustache_options => mustache:options(),
+                    templates => [template_config()]}.
 -type template_config() :: {file:name_all(), term()}
                          | {file:name_all(), term(), template_options()}.
--type template_options() :: #{}.
+-type template_options() :: #{mustache_options => mustache:options()}.
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
     {ok, State2} = rebar3_mustache_prv_generate:init(State),
     {ok, State2}.
+
+-spec default_mustache_options() -> mustache:options().
+default_mustache_options() ->
+  #{disable_html_escaping => true,
+    error_on_unknown_variable => true,
+    error_on_unknown_partial => true,
+    error_on_invalid_partial => true}.
