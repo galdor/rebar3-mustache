@@ -14,7 +14,7 @@
 
 -module(rebar3_mustache_templates).
 
--export([output_path/1, options/2, context/2, render/4,
+-export([output_path/1, options/2, mustache_context/2, render/4,
          read_data_file/1,
          format_error/1]).
 
@@ -49,14 +49,13 @@ options({_, _, Options}, Config) ->
                                           TemplateMustacheOptions)),
   Options#{mustache_options => MustacheOptions}.
 
--spec context(rebar3_mustache:template(), rebar3_mustache:config()) ->
+-spec mustache_context(rebar3_mustache:template(),
+                       rebar3_mustache:template_data()) ->
         mustache:context().
-context({InputPath, Data}, Config) ->
-  context({InputPath, Data, #{}}, Config);
-context({_, Data, _}, Config) ->
-  GlobalData = maps:get(template_data, Config, #{}),
-  Context = maps:merge(GlobalData, Data),
-  Context.
+mustache_context({InputPath, Data}, GlobalData) ->
+  mustache_context({InputPath, Data, #{}}, GlobalData);
+mustache_context({_, Data, _}, GlobalData) ->
+  maps:merge(GlobalData, Data).
 
 -spec render(file:name_all(), mustache:context(),
              rebar3_mustache:template_options(), file:name_all()) ->
