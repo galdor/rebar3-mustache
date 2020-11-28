@@ -27,7 +27,8 @@
                   | {file:name_all(), template_data(),
                      template_options()}.
 -type template_data() :: map().
--type template_options() :: #{mustache_options => mustache:options()}.
+-type template_options() :: #{output_path => file:name_all(),
+                              mustache_options => mustache:options()}.
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
