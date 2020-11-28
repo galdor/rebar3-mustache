@@ -45,16 +45,13 @@ render(InputPath, Context, Options, OutputPath) ->
             ok ->
               ok;
             {error, Reason} ->
-              {error, {rebar3_mustache_templates,
-                       {write_file, Reason, OutputPath}}}
+              {error, {?MODULE, {write_file, Reason, OutputPath}}}
           end;
         {error, Reason} ->
-          {error, {rebar3_mustache_templates,
-                   {render_template, Reason, InputPath}}}
+          {error, {?MODULE, {render_template, Reason, InputPath}}}
       end;
     {error, Reason} ->
-      {error, {rebar3_mustache_templates,
-               {load_template, Reason, InputPath}}}
+      {error, {?MODULE, {load_template, Reason, InputPath}}}
   end.
 
 -spec format_error(any()) -> iolist().
