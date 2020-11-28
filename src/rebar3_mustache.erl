@@ -17,12 +17,16 @@
 -export([init/1,
          default_mustache_options/0]).
 
--export_type([config/0]).
+-export_type([config/0,
+              template/0, template_data/0, template_options/0]).
 
 -type config() :: #{mustache_options => mustache:options(),
-                    templates => [template_config()]}.
--type template_config() :: {file:name_all(), term()}
-                         | {file:name_all(), term(), template_options()}.
+                    data_path => file:name_all(),
+                    templates => [template()]}.
+-type template() :: {file:name_all(), template_data()}
+                  | {file:name_all(), template_data(),
+                     template_options()}.
+-type template_data() :: map().
 -type template_options() :: #{mustache_options => mustache:options()}.
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.

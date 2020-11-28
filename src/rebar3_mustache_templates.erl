@@ -14,7 +14,7 @@
 
 -module(rebar3_mustache_templates).
 
--export([output_path/1, options/2, render/4,
+-export([output_path/1, options/2, context/2, render/4,
          format_error/1]).
 
 -spec output_path(rebar3_mustache:template()) -> file:name_all().
@@ -35,16 +35,54 @@ output_path({InputPath, _, _}) ->
   end.
 
 -spec options(rebar3_mustache:template(), rebar3_mustache:config()) ->
-        rebar3_mustache:options().
+        rebar3_mustache:template_options().
 options({InputPath, Data}, Config) ->
   options({InputPath, Data, #{}}, Config);
 options({_, _, Options}, Config) ->
+  %% Start with default mustache options, then merge global options from the
+  %% configuration map and and template level options.
   GlobalMustacheOptions = maps:get(mustache_options, Config, #{}),
   TemplateMustacheOptions = maps:get(mustache_options, Options, #{}),
   MustacheOptions = maps:merge(rebar3_mustache:default_mustache_options(),
                                maps:merge(GlobalMustacheOptions,
                                           TemplateMustacheOptions)),
   Options#{mustache_options => MustacheOptions}.
+
+-spec context(rebar3_mustache:template(), rebar3_mustache:config()) ->
+        {ok, mustache:context()} | {error, term()}.
+context({InputPath, Data}, Config) ->
+  context({InputPath, Data, #{}}, Config);
+context({_, Data, _}, Config) ->
+  case maybe_read_data_file(Config) of
+    {ok, ExternalData} ->
+      Context = maps:merge(ExternalData, Data),
+      {ok, Context};
+    {error, Reason} ->
+      {error, Reason}
+  end.
+
+-spec maybe_read_data_file(rebar3_mustache:config()) ->
+        {ok, rebar3_mustache:template_data()} | {error, term()}.
+maybe_read_data_file(Config) ->
+  case maps:find(data_path, Config) of
+    {ok, Path} ->
+      read_data_file(Path);
+    {error, Reason} ->
+      {error, Reason}
+  end.
+
+-spec read_data_file(file:name_all()) ->
+        {ok, rebar3_mustache:template_data()} | {error, term()}.
+read_data_file(Path) ->
+  case file:consult(Path) of
+    {ok, Terms} ->
+      Data = lists:foldl(fun (Term, Acc) ->
+                             maps:merge(Acc, Term) end,
+                         #{}, Terms),
+      {ok, Data};
+    {error, Reason} ->
+      {error, {?MODULE, {read_file, Reason, Path}}}
+  end.
 
 -spec render(file:name_all(), mustache:context(),
              rebar3_mustache:template_options(), file:name_all()) ->
