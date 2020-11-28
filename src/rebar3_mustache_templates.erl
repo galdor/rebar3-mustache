@@ -56,7 +56,7 @@ options({_, _, Options}, Config) ->
 mustache_context({InputPath, Data}, GlobalData, App) ->
   mustache_context({InputPath, Data, #{}}, GlobalData, App);
 mustache_context({_, Data, _}, GlobalData, App) ->
-  AppName = atom_to_binary(rebar_app_info:name(App)),
+  AppName = binary_to_atom(rebar_app_info:name(App)),
   maps:merge(#{AppName => GlobalData}, Data).
 
 -spec render(file:name_all(), mustache:context(),
