@@ -124,11 +124,12 @@ handle_templates([Template | Templates], Context) ->
         ok | {error, term()}.
 handle_template({InputPath, Data}, Context) ->
   handle_template({InputPath, Data, #{}}, Context);
-handle_template(Template = {InputPath, _, _}, Context = #{config := Config}) ->
+handle_template(Template = {InputPath, _, _},
+                Context = #{config := Config, app := App}) ->
   OutputPath = rebar3_mustache_templates:output_path(Template),
   GlobalTemplateData = maps:get(template_data, Context, #{}),
   MustacheContext = rebar3_mustache_templates:mustache_context(
-                      Template, GlobalTemplateData),
+                      Template, GlobalTemplateData, App),
   Options = rebar3_mustache_templates:options(Template, Config),
   rebar_api:debug("Rendering template ~s to ~s", [InputPath, OutputPath]),
   rebar3_mustache_templates:render(InputPath, MustacheContext, Options,
