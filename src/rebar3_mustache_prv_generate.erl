@@ -106,4 +106,5 @@ handle_template({InputPath, Data}, Context) ->
 handle_template(Template = {InputPath, Data, _}, #{config := Config}) ->
   OutputPath = rebar3_mustache_templates:output_path(Template),
   Options = rebar3_mustache_templates:options(Template, Config),
+  rebar_api:debug("rendering template ~s to ~s", [InputPath, OutputPath]),
   rebar3_mustache_templates:render(InputPath, Data, Options, OutputPath).
