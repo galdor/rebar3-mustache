@@ -15,6 +15,7 @@
 -module(rebar3_mustache_templates).
 
 -export([output_path/1, options/2, context/2, render/4,
+         read_data_file/1,
          format_error/1]).
 
 -spec output_path(rebar3_mustache:template()) -> file:name_all().
@@ -49,40 +50,13 @@ options({_, _, Options}, Config) ->
   Options#{mustache_options => MustacheOptions}.
 
 -spec context(rebar3_mustache:template(), rebar3_mustache:config()) ->
-        {ok, mustache:context()} | {error, term()}.
+        mustache:context().
 context({InputPath, Data}, Config) ->
   context({InputPath, Data, #{}}, Config);
 context({_, Data, _}, Config) ->
-  case maybe_read_data_file(Config) of
-    {ok, ExternalData} ->
-      Context = maps:merge(ExternalData, Data),
-      {ok, Context};
-    {error, Reason} ->
-      {error, Reason}
-  end.
-
--spec maybe_read_data_file(rebar3_mustache:config()) ->
-        {ok, rebar3_mustache:template_data()} | {error, term()}.
-maybe_read_data_file(Config) ->
-  case maps:find(data_path, Config) of
-    {ok, Path} ->
-      read_data_file(Path);
-    {error, Reason} ->
-      {error, Reason}
-  end.
-
--spec read_data_file(file:name_all()) ->
-        {ok, rebar3_mustache:template_data()} | {error, term()}.
-read_data_file(Path) ->
-  case file:consult(Path) of
-    {ok, Terms} ->
-      Data = lists:foldl(fun (Term, Acc) ->
-                             maps:merge(Acc, Term) end,
-                         #{}, Terms),
-      {ok, Data};
-    {error, Reason} ->
-      {error, {?MODULE, {read_file, Reason, Path}}}
-  end.
+  GlobalData = maps:get(template_data, Config, #{}),
+  Context = maps:merge(GlobalData, Data),
+  Context.
 
 -spec render(file:name_all(), mustache:context(),
              rebar3_mustache:template_options(), file:name_all()) ->
@@ -107,11 +81,26 @@ render(InputPath, Context, Options, OutputPath) ->
       {error, {?MODULE, {load_template, Reason, InputPath}}}
   end.
 
+-spec read_data_file(file:name_all()) ->
+        {ok, rebar3_mustache:template_data()} | {error, term()}.
+read_data_file(Path) ->
+  case file:consult(Path) of
+    {ok, Terms} ->
+      Data = lists:foldl(fun (Term, Acc) ->
+                             maps:merge(Acc, Term) end,
+                         #{}, Terms),
+      {ok, Data};
+    {error, Reason} ->
+      {error, {?MODULE, {read_file, Reason, Path}}}
+  end.
+
 -spec format_error(any()) -> iolist().
 format_error({load_template, Reason, Path}) ->
   io_lib:format("Cannot load template ~s: ~p", [Path, Reason]);
 format_error({render_template, Reason, Path}) ->
   io_lib:format("Cannot render template ~s: ~p", [Path, Reason]);
+format_error({read_file, Reason, Path}) ->
+  io_lib:format("Cannot read file ~s: ~p", [Path, Reason]);
 format_error({write_file, Reason, Path}) ->
   io_lib:format("Cannot write file ~s: ~p", [Path, Reason]);
 format_error(Reason) ->

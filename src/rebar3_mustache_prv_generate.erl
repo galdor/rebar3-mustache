@@ -23,7 +23,8 @@
 
 -type context() :: #{rebar := rebar_state:t(),
                      app := rebar_app_info:t(),
-                     config := rebar3_mustache:config()}.
+                     config := rebar3_mustache:config(),
+                     template_data => rebar3_mustache:template_data()}.
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
@@ -72,14 +73,34 @@ handle_apps([App | Apps], State) ->
       Context = #{rebar => State,
                   app => App,
                   config => Config},
-      case handle_app(Context) of
-        ok ->
-          handle_apps(Apps, State);
+      case maybe_load_template_data(Context) of
+        {ok, Context2} ->
+          case handle_app(Context2) of
+            ok ->
+              handle_apps(Apps, State);
+            {error, Reason} ->
+              {error, Reason}
+          end;
         {error, Reason} ->
           {error, Reason}
       end;
     error ->
       ok
+  end.
+
+-spec maybe_load_template_data(context()) -> {ok, context()} | {error, term()}.
+maybe_load_template_data(Context = #{config := Config}) ->
+  case maps:find(template_data_path, Config) of
+    {ok, Path} ->
+      rebar_api:debug("Loading template data from ~s", [Path]),
+      case rebar3_mustache_templates:read_data_file(Path) of
+        {ok, Data} ->
+          {ok, Context#{template_data => Data}};
+        {error, Reason} ->
+          {error, Reason}
+      end;
+    error ->
+      {ok, Context}
   end.
 
 -spec handle_app(context()) -> ok | {error, term()}.
@@ -103,8 +124,9 @@ handle_templates([Template | Templates], Context) ->
         ok | {error, term()}.
 handle_template({InputPath, Data}, Context) ->
   handle_template({InputPath, Data, #{}}, Context);
-handle_template(Template = {InputPath, Data, _}, #{config := Config}) ->
+handle_template(Template = {InputPath, _, _}, #{config := Config}) ->
   OutputPath = rebar3_mustache_templates:output_path(Template),
+  Context = rebar3_mustache_templates:context(Template, Config),
   Options = rebar3_mustache_templates:options(Template, Config),
   rebar_api:debug("Rendering template ~s to ~s", [InputPath, OutputPath]),
-  rebar3_mustache_templates:render(InputPath, Data, Options, OutputPath).
+  rebar3_mustache_templates:render(InputPath, Context, Options, OutputPath).

@@ -21,7 +21,7 @@
               template/0, template_data/0, template_options/0]).
 
 -type config() :: #{mustache_options => mustache:options(),
-                    data_path => file:name_all(),
+                    template_data_path => file:name_all(),
                     templates => [template()]}.
 -type template() :: {file:name_all(), template_data()}
                   | {file:name_all(), template_data(),
