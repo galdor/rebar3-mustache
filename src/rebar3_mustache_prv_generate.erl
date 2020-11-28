@@ -103,6 +103,6 @@ handle_templates([Template | Templates], Context) ->
         ok | {error, term()}.
 handle_template({InputPath, Data}, Context) ->
   handle_template({InputPath, Data, #{}}, Context);
-handle_template({InputPath, Data, Options}, Context) ->
+handle_template({InputPath, Data, Options}, _Context) ->
   OutputPath = rebar3_mustache_templates:output_path(InputPath, Options),
   rebar3_mustache_templates:render(InputPath, Data, Options, OutputPath).
