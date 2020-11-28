@@ -22,10 +22,14 @@ init(State) ->
                         {module, ?MODULE},
                         {bare, true},
                         {deps, []},
-                        {example, "TODO example"},
+                        {example,
+                         "rebar3 mustache example.mustache output=example.txt "
+                         "data=example.erl"},
                         {opts, []},
-                        {short_desc, "TODO short_desc"},
-                        {desc, "TODO desc"}]),
+                        {short_desc,
+                         "Generate files based on Mustache templates."},
+                        {desc,
+                         "Generate files based on Mustache templates."}]),
   {ok, rebar_state:add_provider(State, P)}.
 
 -spec do(rebar_state:t()) -> {ok, rebar_state:t()} | {error, string()}.
