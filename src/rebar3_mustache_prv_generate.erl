@@ -21,6 +21,10 @@
 %% for some reason we cannot use "-behaviour(provider)" (callback info not
 %% available, etc.). Do not ask.
 
+-type context() :: #{rebar := rebar_state:t(),
+                     app := rebar_app_info:t(),
+                     config := rebar3_mustache:config()}.
+
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
   P = providers:create([{name, generate},
@@ -44,11 +48,11 @@ do(State) ->
            undefined -> rebar_state:project_apps(State);
            App -> [App]
          end,
-  case handle_apps(Apps) of
+  case handle_apps(Apps, State) of
     ok ->
       {ok, State};
     {error, Reason} ->
-      {error, {rebar3_mustache, Reason}}
+      {error, Reason}
   end.
 
 -spec format_error(any()) -> iolist().
@@ -57,17 +61,48 @@ format_error(invalid_arguments) ->
 format_error(Reason) ->
   io_lib:format("~p", [Reason]).
 
--spec handle_apps([rebar_app_info:t()]) -> ok | {error, term()}.
-handle_apps([]) ->
+-spec handle_apps([rebar_app_info:t()], rebar_state:t()) ->
+        ok | {error, term()}.
+handle_apps([], _State) ->
   ok;
-handle_apps([App | Apps]) ->
-  case handle_app(App) of
+handle_apps([App | Apps], State) ->
+  Opts = rebar_app_info:opts(App),
+  case dict:find(mustache, Opts) of
+    {ok, Config} ->
+      Context = #{rebar => State,
+                  app => App,
+                  config => Config},
+      case handle_app(Context) of
+        ok ->
+          handle_apps(Apps, State);
+        {error, Reason} ->
+          {error, Reason}
+      end;
+    error ->
+      ok
+  end.
+
+-spec handle_app(context()) -> ok | {error, term()}.
+handle_app(Context = #{config := Config}) ->
+  Templates = maps:get(templates, Config, []),
+  handle_templates(Templates, Context).
+
+-spec handle_templates([rebar3_mustache:template()], context()) ->
+        ok | {error, term()}.
+handle_templates([], _Context) ->
+  ok;
+handle_templates([Template | Templates], Context) ->
+  case handle_template(Template, Context) of
     ok ->
-      handle_apps(Apps);
+      handle_templates(Templates, Context);
     {error, Reason} ->
       {error, Reason}
   end.
 
--spec handle_app(rebar_app_info:t()) -> ok | {error, term()}.
-handle_app(_App) ->
-  ok.
+-spec handle_template(rebar3_mustache:template(), context()) ->
+        ok | {error, term()}.
+handle_template({InputPath, Data}, Context) ->
+  handle_template({InputPath, Data, #{}}, Context);
+handle_template({InputPath, Data, Options}, Context) ->
+  OutputPath = rebar3_mustache_templates:output_path(InputPath, Options),
+  rebar3_mustache_templates:render(InputPath, Data, Options, OutputPath).

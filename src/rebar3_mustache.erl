@@ -16,8 +16,14 @@
 
 -export([init/1]).
 
+-export_type([config/0]).
+
+-type config() :: #{templates => [template_config()]}.
+-type template_config() :: {file:name_all(), term()}
+                         | {file:name_all(), term(), template_options()}.
+-type template_options() :: #{}.
+
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
     {ok, State2} = rebar3_mustache_prv_generate:init(State),
     {ok, State2}.
-
