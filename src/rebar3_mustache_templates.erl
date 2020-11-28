@@ -14,7 +14,8 @@
 
 -module(rebar3_mustache_templates).
 
--export([output_path/2, render/4]).
+-export([output_path/2, render/4,
+         format_error/1]).
 
 -spec output_path(file:name_all(), rebar3_mustache:template_options()) ->
         file:name_all().
@@ -44,11 +45,24 @@ render(InputPath, Context, Options, OutputPath) ->
             ok ->
               ok;
             {error, Reason} ->
-              {error, {rebar3_mustache_templates, {write_file, Reason}}}
+              {error, {rebar3_mustache_templates,
+                       {write_file, Reason, OutputPath}}}
           end;
         {error, Reason} ->
-          {error, {rebar3_mustache_templates, {render_template, Reason}}}
+          {error, {rebar3_mustache_templates,
+                   {render_template, Reason, InputPath}}}
       end;
     {error, Reason} ->
-      {error, {rebar3_mustache_templates, {load_template, Reason}}}
+      {error, {rebar3_mustache_templates,
+               {load_template, Reason, InputPath}}}
   end.
+
+-spec format_error(any()) -> iolist().
+format_error({load_template, Reason, Path}) ->
+  io_lib:format("cannot load template ~s: ~p", [Path, Reason]);
+format_error({render_template, Reason, Path}) ->
+  io_lib:format("cannot render template ~s: ~p", [Path, Reason]);
+format_error({write_file, Reason, Path}) ->
+  io_lib:format("cannot write file ~s: ~p", [Path, Reason]);
+format_error(Reason) ->
+  io_lib:format("~p", [Reason]).
