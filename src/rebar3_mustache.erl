@@ -32,7 +32,8 @@
 -type template_options() :: #{output_path => file:name_all(),
                               mustache_options => mustache:options()}.
 
--type rebar_data() :: #{profile => atom()}.
+-type rebar_data() :: #{app => atom(),
+                        profile => atom()}.
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
@@ -47,6 +48,6 @@ default_mustache_options() ->
     error_on_invalid_partial => true}.
 
 -spec rebar_data(rebar_state:t(), rebar_app_info:t()) -> rebar_data().
-rebar_data(_State, _App) ->
+rebar_data(_State, App) ->
   AppName = binary_to_atom(rebar_app_info:name(App)),
   #{app => AppName}.
