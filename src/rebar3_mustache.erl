@@ -15,10 +15,12 @@
 -module(rebar3_mustache).
 
 -export([init/1,
-         default_mustache_options/0]).
+         default_mustache_options/0,
+         rebar_data/2]).
 
 -export_type([config/0,
-              template/0, template_data/0, template_options/0]).
+              template/0, template_data/0, template_options/0,
+              rebar_data/0]).
 
 -type config() :: #{mustache_options => mustache:options(),
                     template_data_path => file:name_all(),
@@ -29,6 +31,8 @@
 -type template_data() :: map().
 -type template_options() :: #{output_path => file:name_all(),
                               mustache_options => mustache:options()}.
+
+-type rebar_data() :: #{profile => atom()}.
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
@@ -41,3 +45,8 @@ default_mustache_options() ->
     error_on_unknown_variable => true,
     error_on_unknown_partial => true,
     error_on_invalid_partial => true}.
+
+-spec rebar_data(rebar_state:t(), rebar_app_info:t()) -> rebar_data().
+rebar_data(_State, _App) ->
+  AppName = binary_to_atom(rebar_app_info:name(App)),
+  #{app => AppName}.

@@ -21,7 +21,7 @@
 %% for some reason we cannot use "-behaviour(provider)" (callback info not
 %% available, etc.). Do not ask.
 
--type context() :: #{rebar := rebar_state:t(),
+-type context() :: #{state := rebar_state:t(),
                      app := rebar_app_info:t(),
                      config := rebar3_mustache:config(),
                      template_data => rebar3_mustache:template_data()}.
@@ -70,7 +70,7 @@ handle_apps([App | Apps], State) ->
   Opts = rebar_app_info:opts(App),
   case dict:find(mustache, Opts) of
     {ok, Config} ->
-      Context = #{rebar => State,
+      Context = #{state => State,
                   app => App,
                   config => Config},
       case maybe_load_template_data(Context) of
@@ -125,11 +125,11 @@ handle_templates([Template | Templates], Context) ->
 handle_template({InputPath, Data}, Context) ->
   handle_template({InputPath, Data, #{}}, Context);
 handle_template(Template = {InputPath, _, _},
-                Context = #{config := Config, app := App}) ->
+                Context = #{config := Config, state := State, app := App}) ->
   OutputPath = rebar3_mustache_templates:output_path(Template),
   GlobalTemplateData = maps:get(template_data, Context, #{}),
   MustacheContext = rebar3_mustache_templates:mustache_context(
-                      Template, GlobalTemplateData, App),
+                      Template, GlobalTemplateData, State, App),
   Options = rebar3_mustache_templates:options(Template, Config),
   rebar_api:debug("Rendering template ~s to ~s", [InputPath, OutputPath]),
   rebar3_mustache_templates:render(InputPath, MustacheContext, Options,
