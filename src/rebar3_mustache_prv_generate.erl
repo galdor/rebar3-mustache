@@ -24,7 +24,8 @@
 -type context() :: #{state := rebar_state:t(),
                      app := rebar_app_info:t(),
                      config := rebar3_mustache:config(),
-                     template_data => rebar3_mustache:template_data()}.
+                     template_data => rebar3_mustache:template_data(),
+                     profile => atom()}.
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
 init(State) ->
@@ -49,10 +50,14 @@ do(State) ->
            undefined -> rebar_state:project_apps(State);
            App -> [App]
          end,
-  case handle_apps(Apps, State) of
-    ok ->
-      {ok, State};
-    {error, Reason} ->
+  Profiles = rebar_state:current_profiles(State),
+  try
+    lists:foreach(fun ({App, Profile}) ->
+                      handle_app(App, Profile, State)
+                  end, [{A, P} || A <- Apps, P <- Profiles]),
+    {ok, State}
+  catch
+    throw:{error, Reason} ->
       {error, Reason}
   end.
 
@@ -62,75 +67,66 @@ format_error(invalid_arguments) ->
 format_error(Reason) ->
   io_lib:format("~p", [Reason]).
 
--spec handle_apps([rebar_app_info:t()], rebar_state:t()) ->
-        ok | {error, term()}.
-handle_apps([], _State) ->
-  ok;
-handle_apps([App | Apps], State) ->
+-spec handle_app(rebar_app_info:t(), Profile :: atom(), rebar_state:t()) -> ok.
+handle_app(App, Profile, State) ->
   Opts = rebar_app_info:opts(App),
   case dict:find(mustache, Opts) of
     {ok, Config} ->
       Context = #{state => State,
                   app => App,
-                  config => Config},
-      case maybe_load_template_data(Context) of
-        {ok, Context2} ->
-          case handle_app(Context2) of
-            ok ->
-              handle_apps(Apps, State);
-            {error, Reason} ->
-              {error, Reason}
-          end;
-        {error, Reason} ->
-          {error, Reason}
-      end;
+                  config => Config,
+                  profile => Profile},
+      Context2 = maybe_load_template_data(Context),
+      handle_app(Context2);
     error ->
       ok
   end.
 
--spec maybe_load_template_data(context()) -> {ok, context()} | {error, term()}.
+-spec maybe_load_template_data(context()) -> context().
 maybe_load_template_data(Context = #{config := Config}) ->
   case maps:find(template_data_path, Config) of
     {ok, Path} ->
       rebar_api:debug("Loading template data from ~s", [Path]),
       case rebar3_mustache_templates:read_data_file(Path) of
         {ok, Data} ->
-          {ok, Context#{template_data => Data}};
+          Context#{template_data => Data};
         {error, Reason} ->
-          {error, Reason}
+          throw({error, Reason})
       end;
     error ->
-      {ok, Context}
+      Context
   end.
 
--spec handle_app(context()) -> ok | {error, term()}.
+-spec handle_app(context()) -> ok.
 handle_app(Context = #{config := Config}) ->
   Templates = maps:get(templates, Config, []),
-  handle_templates(Templates, Context).
+  lists:foreach(fun (T) ->
+                    handle_template(T, Context)
+                end, Templates).
 
--spec handle_templates([rebar3_mustache:template()], context()) ->
-        ok | {error, term()}.
-handle_templates([], _Context) ->
-  ok;
-handle_templates([Template | Templates], Context) ->
-  case handle_template(Template, Context) of
-    ok ->
-      handle_templates(Templates, Context);
-    {error, Reason} ->
-      {error, Reason}
-  end.
-
--spec handle_template(rebar3_mustache:template(), context()) ->
-        ok | {error, term()}.
+-spec handle_template(rebar3_mustache:template(), context()) -> ok.
 handle_template({InputPath, Data}, Context) ->
   handle_template({InputPath, Data, #{}}, Context);
 handle_template(Template = {InputPath, _, _},
-                Context = #{config := Config, state := State, app := App}) ->
+                Context = #{config := Config, app := App}) ->
   OutputPath = rebar3_mustache_templates:output_path(Template),
   GlobalTemplateData = maps:get(template_data, Context, #{}),
   MustacheContext = rebar3_mustache_templates:mustache_context(
-                      Template, GlobalTemplateData, State, App),
+                      Template, GlobalTemplateData, App, rebar_data(Context)),
   Options = rebar3_mustache_templates:options(Template, Config),
   rebar_api:debug("Rendering template ~s to ~s", [InputPath, OutputPath]),
-  rebar3_mustache_templates:render(InputPath, MustacheContext, Options,
-                                   OutputPath).
+  case
+    rebar3_mustache_templates:render(InputPath, MustacheContext, Options,
+                                     OutputPath)
+  of
+    ok ->
+      ok;
+    {error, Reason} ->
+      throw({error, Reason})
+  end.
+
+-spec rebar_data(context()) -> rebar3_mustache:rebar_data().
+rebar_data(#{app := App, profile := Profile}) ->
+  AppName = binary_to_atom(rebar_app_info:name(App)),
+  #{app => AppName,
+    profile => Profile}.

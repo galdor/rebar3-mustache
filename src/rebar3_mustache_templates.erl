@@ -51,13 +51,12 @@ options({_, _, Options}, Config) ->
 
 -spec mustache_context(rebar3_mustache:template(),
                        rebar3_mustache:template_data(),
-                       rebar_app_state:t(),
-                       rebar_app_info:t()) ->
+                       rebar_app_info:t(),
+                       rebar3_mustache:rebar_data()) ->
         mustache:context().
-mustache_context({InputPath, Data}, GlobalData, State, App) ->
-  mustache_context({InputPath, Data, #{}}, GlobalData, State, App);
-mustache_context({_, Data, _}, GlobalData, State, App) ->
-  RebarData = rebar3_mustache:rebar_data(State, App),
+mustache_context({InputPath, Data}, GlobalData, App, RebarData) ->
+  mustache_context({InputPath, Data, #{}}, App, GlobalData, RebarData);
+mustache_context({_, Data, _}, GlobalData, App, RebarData) ->
   AppName = binary_to_atom(rebar_app_info:name(App)),
   maps:merge(#{rebar => RebarData,
                AppName => GlobalData},
