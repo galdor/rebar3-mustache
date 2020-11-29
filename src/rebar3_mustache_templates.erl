@@ -19,11 +19,9 @@
          format_error/1]).
 
 -spec output_path(rebar3_mustache:template()) -> file:name_all().
-output_path({InputPath, Data}) ->
-  output_path({InputPath, Data, #{}});
-output_path({_, _, #{output_path := OutputPath}}) ->
+output_path({_, #{output_path := OutputPath}}) ->
   OutputPath;
-output_path({InputPath, _, _}) ->
+output_path({InputPath, _}) ->
   %% The default behaviour will generate "name.ext" from "name.ext.mustache"
   %% (or any other final extension).
   case filename:rootname(InputPath) of
@@ -37,9 +35,7 @@ output_path({InputPath, _, _}) ->
 
 -spec options(rebar3_mustache:template(), rebar3_mustache:config()) ->
         rebar3_mustache:template_options().
-options({InputPath, Data}, Config) ->
-  options({InputPath, Data, #{}}, Config);
-options({_, _, Options}, Config) ->
+options({_, Options}, Config) ->
   %% Start with default mustache options, then merge global options from the
   %% configuration map and and template level options.
   GlobalMustacheOptions = maps:get(mustache_options, Config, #{}),
@@ -54,9 +50,8 @@ options({_, _, Options}, Config) ->
                        rebar_app_info:t(),
                        rebar3_mustache:rebar_data()) ->
         mustache:context().
-mustache_context({InputPath, Data}, GlobalData, App, RebarData) ->
-  mustache_context({InputPath, Data, #{}}, App, GlobalData, RebarData);
-mustache_context({_, Data, _}, GlobalData, App, RebarData) ->
+mustache_context({_, Options}, GlobalData, App, RebarData) ->
+  Data = maps:get(data, Options, #{}),
   AppName = binary_to_atom(rebar_app_info:name(App)),
   maps:merge(#{rebar => RebarData,
                AppName => GlobalData},

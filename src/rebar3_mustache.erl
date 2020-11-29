@@ -24,12 +24,11 @@
 -type config() :: #{mustache_options => mustache:options(),
                     template_data_path => file:name_all(),
                     templates => [template()]}.
--type template() :: {file:name_all(), template_data()}
-                  | {file:name_all(), template_data(),
-                     template_options()}.
--type template_data() :: map().
--type template_options() :: #{output_path => file:name_all(),
+-type template() :: {file:name_all(), template_options()}.
+-type template_options() :: #{data => template_data(),
+                              output_path => file:name_all(),
                               mustache_options => mustache:options()}.
+-type template_data() :: map().
 
 -type rebar_data() :: #{app := atom(),
                         profile => atom()}.

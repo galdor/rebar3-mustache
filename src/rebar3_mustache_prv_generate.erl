@@ -105,9 +105,7 @@ handle_app(Context = #{config := Config}) ->
                 end, Templates).
 
 -spec handle_template(rebar3_mustache:template(), context()) -> ok.
-handle_template({InputPath, Data}, Context) ->
-  handle_template({InputPath, Data, #{}}, Context);
-handle_template(Template = {InputPath, _, _},
+handle_template(Template = {InputPath, _},
                 Context = #{config := Config, app := App}) ->
   OutputPath = rebar3_mustache_templates:output_path(Template),
   GlobalTemplateData = maps:get(template_data, Context, #{}),
