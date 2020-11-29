@@ -24,6 +24,7 @@
 -type context() :: #{state := rebar_state:t(),
                      app := rebar_app_info:t(),
                      config := rebar3_mustache:config(),
+                     rebar_data := rebar3_mustache:rebar_data(),
                      template_data => rebar3_mustache:template_data(),
                      profile => atom()}.
 
@@ -75,7 +76,8 @@ handle_app(App, Profile, State) ->
       Context = #{state => State,
                   app => App,
                   config => Config,
-                  profile => Profile},
+                  profile => Profile,
+                  rebar_data => rebar_data(App, Profile)},
       Context2 = maybe_load_template_data(Context),
       handle_app(Context2);
     error ->
@@ -83,9 +85,12 @@ handle_app(App, Profile, State) ->
   end.
 
 -spec maybe_load_template_data(context()) -> context().
-maybe_load_template_data(Context = #{config := Config}) ->
+maybe_load_template_data(Context = #{config := Config,
+                                     rebar_data := RebarData}) ->
   case maps:find(template_data_path, Config) of
-    {ok, Path} ->
+    {ok, PathTemplateString} ->
+      MustacheContext = #{rebar => RebarData},
+      Path = render_string(PathTemplateString, MustacheContext, #{}),
       rebar_api:debug("Loading template data from ~s", [Path]),
       case rebar3_mustache_templates:read_data_file(Path) of
         {ok, Data} ->
@@ -106,9 +111,10 @@ handle_app(Context = #{config := Config}) ->
 
 -spec handle_template(rebar3_mustache:template(), context()) -> ok.
 handle_template(Template = {InputPath, _},
-                Context = #{config := Config, app := App}) ->
+                Context = #{config := Config,
+                            app := App,
+                            rebar_data := RebarData}) ->
   AppName = binary_to_atom(rebar_app_info:name(App)),
-  RebarData = rebar_data(Context),
   AppTemplateData = maps:get(template_data, Context, #{}),
   BaseContext = maps:merge(#{rebar => RebarData},
                            #{AppName => AppTemplateData}),
@@ -125,8 +131,9 @@ output_path(Template, Context) ->
   PathTemplateString = rebar3_mustache_templates:output_path(Template),
   render_string(PathTemplateString, Context, #{}).
 
--spec rebar_data(context()) -> rebar3_mustache:rebar_data().
-rebar_data(#{app := App, profile := Profile}) ->
+-spec rebar_data(rebar_app_info:t(), Profile :: atom()) ->
+        rebar3_mustache:rebar_data().
+rebar_data(App, Profile) ->
   AppName = binary_to_atom(rebar_app_info:name(App)),
   #{app => AppName,
     profile => Profile}.
