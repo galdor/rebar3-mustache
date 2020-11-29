@@ -14,7 +14,8 @@
 
 -module(rebar3_mustache_templates).
 
--export([output_path/1, options/2, mustache_context/4, render/4,
+-export([output_path/1, options/2, mustache_context/1,
+         render_file/4, render_string/3,
          read_data_file/1,
          format_error/1]).
 
@@ -45,22 +46,14 @@ options({_, Options}, Config) ->
                                           TemplateMustacheOptions)),
   Options#{mustache_options => MustacheOptions}.
 
--spec mustache_context(rebar3_mustache:template(),
-                       rebar3_mustache:template_data(),
-                       rebar_app_info:t(),
-                       rebar3_mustache:rebar_data()) ->
-        mustache:context().
-mustache_context({_, Options}, GlobalData, App, RebarData) ->
-  Data = maps:get(data, Options, #{}),
-  AppName = binary_to_atom(rebar_app_info:name(App)),
-  maps:merge(#{rebar => RebarData,
-               AppName => GlobalData},
-             Data).
+-spec mustache_context(rebar3_mustache:template()) -> mustache:context().
+mustache_context({_, Options}) ->
+  maps:get(data, Options, #{}).
 
--spec render(file:name_all(), mustache:context(),
-             rebar3_mustache:template_options(), file:name_all()) ->
+-spec render_file(file:name_all(), file:name_all(), mustache:context(),
+                  rebar3_mustache:template_options()) ->
         ok | {error, term()}.
-render(InputPath, Context, Options, OutputPath) ->
+render_file(InputPath, OutputPath, Context, Options) ->
   MustacheOptions = maps:get(mustache_options, Options,
                              rebar3_mustache:default_mustache_options()),
   case mustache:load_template(InputPath, {file, InputPath}, #{}) of
@@ -77,7 +70,35 @@ render(InputPath, Context, Options, OutputPath) ->
           {error, {?MODULE, {render_template, Reason, InputPath}}}
       end;
     {error, Reason} ->
-      {error, {?MODULE, {load_template, Reason, InputPath}}}
+      {error, {?MODULE, {load_template_file, Reason, InputPath}}}
+  end.
+
+-spec render_string(binary() | string(), mustache:context(),
+                    rebar3_mustache:template_options()) ->
+        {ok, binary() | string()} | {error, term()}.
+render_string(InputString, Context, Options) ->
+  MustacheOptions0 = maps:get(mustache_options, Options,
+                              rebar3_mustache:default_mustache_options()),
+  MustacheOptions = MustacheOptions0#{return_binary => true},
+  TemplateName = if
+                   is_binary(InputString) -> InputString;
+                   true -> list_to_binary(InputString)
+                 end,
+  case mustache:load_template(TemplateName, {string, InputString}, #{}) of
+    {ok, Template} ->
+      case mustache:render_template(Template, Context, MustacheOptions) of
+        {ok, Data} ->
+          if
+            is_binary(InputString) ->
+              {ok, Data};
+            true ->
+              {ok, binary_to_list(Data)}
+          end;
+        {error, Reason} ->
+          {error, {?MODULE, {render_template, Reason, TemplateName}}}
+      end;
+    {error, Reason} ->
+      {error, {?MODULE, {load_template_string, Reason, TemplateName}}}
   end.
 
 -spec read_data_file(file:name_all()) ->
@@ -94,8 +115,10 @@ read_data_file(Path) ->
   end.
 
 -spec format_error(any()) -> iolist().
-format_error({load_template, Reason, Path}) ->
+format_error({load_template_file, Reason, Path}) ->
   io_lib:format("Cannot load template ~s: ~p", [Path, Reason]);
+format_error({load_template_string, Reason, Name}) ->
+  io_lib:format("Cannot load template ~s: ~p", [Name, Reason]);
 format_error({render_template, Reason, Path}) ->
   io_lib:format("Cannot render template ~s: ~p", [Path, Reason]);
 format_error({read_file, Reason, Path}) ->

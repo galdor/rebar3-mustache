@@ -107,15 +107,36 @@ handle_app(Context = #{config := Config}) ->
 -spec handle_template(rebar3_mustache:template(), context()) -> ok.
 handle_template(Template = {InputPath, _},
                 Context = #{config := Config, app := App}) ->
-  OutputPath = rebar3_mustache_templates:output_path(Template),
-  GlobalTemplateData = maps:get(template_data, Context, #{}),
-  MustacheContext = rebar3_mustache_templates:mustache_context(
-                      Template, GlobalTemplateData, App, rebar_data(Context)),
+  AppName = binary_to_atom(rebar_app_info:name(App)),
+  RebarData = rebar_data(Context),
+  AppTemplateData = maps:get(template_data, Context, #{}),
+  BaseContext = maps:merge(#{rebar => RebarData},
+                           #{AppName => AppTemplateData}),
+  TemplateContext = rebar3_mustache_templates:mustache_context(Template),
+  MustacheContext = maps:merge(BaseContext, TemplateContext),
+  OutputPath = output_path(Template, BaseContext),
   Options = rebar3_mustache_templates:options(Template, Config),
   rebar_api:debug("Rendering template ~s to ~s", [InputPath, OutputPath]),
+  render_file(InputPath, OutputPath, MustacheContext, Options).
+
+-spec output_path(rebar3_mustache:template(),
+                  mustache:context()) -> file:name_all().
+output_path(Template, Context) ->
+  PathTemplateString = rebar3_mustache_templates:output_path(Template),
+  render_string(PathTemplateString, Context, #{}).
+
+-spec rebar_data(context()) -> rebar3_mustache:rebar_data().
+rebar_data(#{app := App, profile := Profile}) ->
+  AppName = binary_to_atom(rebar_app_info:name(App)),
+  #{app => AppName,
+    profile => Profile}.
+
+-spec render_file(file:name_all(), file:name_all(), mustache:context(),
+                  rebar3_mustache:template_options()) -> ok.
+render_file(InputPath, OutputPath, Context, Options) ->
   case
-    rebar3_mustache_templates:render(InputPath, MustacheContext, Options,
-                                     OutputPath)
+    rebar3_mustache_templates:render_file(InputPath, OutputPath,
+                                          Context, Options)
   of
     ok ->
       ok;
@@ -123,8 +144,14 @@ handle_template(Template = {InputPath, _},
       throw({error, Reason})
   end.
 
--spec rebar_data(context()) -> rebar3_mustache:rebar_data().
-rebar_data(#{app := App, profile := Profile}) ->
-  AppName = binary_to_atom(rebar_app_info:name(App)),
-  #{app => AppName,
-    profile => Profile}.
+-spec render_string(binary() | string(), mustache:context(),
+                    rebar3_mustache:template_options()) -> binary() | string().
+render_string(Input, Context, Options) ->
+  case
+    rebar3_mustache_templates:render_string(Input, Context, Options)
+  of
+    {ok, Output} ->
+      Output;
+    {error, Reason} ->
+      throw({error, Reason})
+  end.
