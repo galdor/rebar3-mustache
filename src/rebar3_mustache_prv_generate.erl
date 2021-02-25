@@ -103,7 +103,9 @@ maybe_load_template_data(Context = #{config := Config,
   end.
 
 -spec handle_app(context()) -> ok.
-handle_app(Context = #{config := Config}) ->
+handle_app(Context = #{config := Config, app := App}) ->
+  rebar_api:debug("Rendering templates for application ~s",
+                  [rebar_app_info:name(App)]),
   Templates = maps:get(templates, Config, []),
   lists:foreach(fun (T) ->
                     handle_template(T, Context)
