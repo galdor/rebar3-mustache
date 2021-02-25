@@ -51,7 +51,7 @@ do(State) ->
            undefined ->
              ProjectApps = rebar_state:project_apps(State),
              Names = lists:map(fun rebar_app_info:name/1, ProjectApps),
-             rebar_api:debug("Project applications: ~s", [Names]),
+             rebar_api:debug("Project applications: ~0p", [Names]),
              ProjectApps;
            App ->
              rebar_api:debug("Current application: ~s",
