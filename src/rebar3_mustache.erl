@@ -15,7 +15,8 @@
 -module(rebar3_mustache).
 
 -export([init/1,
-         default_mustache_options/0]).
+         default_mustache_options/0,
+         format_error/1]).
 
 -export_type([config/0,
               template/0, template_data/0, template_options/0,
@@ -23,6 +24,7 @@
 
 -type config() :: #{mustache_options => mustache:options(),
                     template_data_path => file:name_all(),
+                    template_data_key => mustache:context_key(),
                     templates => [template()]}.
 -type template() :: {file:name_all(), template_options()}.
 -type template_options() :: #{data => template_data(),
@@ -30,7 +32,7 @@
                               mustache_options => mustache:options()}.
 -type template_data() :: map().
 
--type rebar_data() :: #{app := atom(),
+-type rebar_data() :: #{app => atom(),
                         profile => atom()}.
 
 -spec init(rebar_state:t()) -> {ok, rebar_state:t()}.
@@ -44,3 +46,19 @@ default_mustache_options() ->
     error_on_unknown_variable => true,
     error_on_unknown_partial => true,
     error_on_invalid_partial => true}.
+
+-spec format_error(any()) -> iolist().
+format_error(missing_template_data_key) ->
+  "missing template_data_key setting in multi-application project";
+format_error({load_template_file, Reason, Path}) ->
+  io_lib:format("Cannot load template ~s: ~p", [Path, Reason]);
+format_error({load_template_string, Reason, Name}) ->
+  io_lib:format("Cannot load template ~s: ~p", [Name, Reason]);
+format_error({render_template, Reason, Path}) ->
+  io_lib:format("Cannot render template ~s: ~p", [Path, Reason]);
+format_error({read_file, Reason, Path}) ->
+  io_lib:format("Cannot read file ~s: ~p", [Path, Reason]);
+format_error({write_file, Reason, Path}) ->
+  io_lib:format("Cannot write file ~s: ~p", [Path, Reason]);
+format_error(Reason) ->
+  io_lib:format("~p", [Reason]).

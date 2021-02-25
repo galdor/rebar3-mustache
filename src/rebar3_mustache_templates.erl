@@ -16,8 +16,7 @@
 
 -export([output_path/1, options/2, mustache_context/1,
          render_file/4, render_string/3,
-         read_data_file/1,
-         format_error/1]).
+         read_data_file/1]).
 
 -spec output_path(rebar3_mustache:template()) -> file:name_all().
 output_path({_, #{output_path := OutputPath}}) ->
@@ -64,13 +63,13 @@ render_file(InputPath, OutputPath, Context, Options) ->
             ok ->
               ok;
             {error, Reason} ->
-              {error, {?MODULE, {write_file, Reason, OutputPath}}}
+              {error, {write_file, Reason, OutputPath}}
           end;
         {error, Reason} ->
-          {error, {?MODULE, {render_template, Reason, InputPath}}}
+          {error, {render_template, Reason, InputPath}}
       end;
     {error, Reason} ->
-      {error, {?MODULE, {load_template_file, Reason, InputPath}}}
+      {error, {load_template_file, Reason, InputPath}}
   end.
 
 -spec render_string(binary() | string(), mustache:context(),
@@ -95,10 +94,10 @@ render_string(InputString, Context, Options) ->
               {ok, binary_to_list(Data)}
           end;
         {error, Reason} ->
-          {error, {?MODULE, {render_template, Reason, TemplateName}}}
+          {error, {render_template, Reason, TemplateName}}
       end;
     {error, Reason} ->
-      {error, {?MODULE, {load_template_string, Reason, TemplateName}}}
+      {error, {load_template_string, Reason, TemplateName}}
   end.
 
 -spec read_data_file(file:name_all()) ->
@@ -111,19 +110,5 @@ read_data_file(Path) ->
                          #{}, Terms),
       {ok, Data};
     {error, Reason} ->
-      {error, {?MODULE, {read_file, Reason, Path}}}
+      {error, {read_file, Reason, Path}}
   end.
-
--spec format_error(any()) -> iolist().
-format_error({load_template_file, Reason, Path}) ->
-  io_lib:format("Cannot load template ~s: ~p", [Path, Reason]);
-format_error({load_template_string, Reason, Name}) ->
-  io_lib:format("Cannot load template ~s: ~p", [Name, Reason]);
-format_error({render_template, Reason, Path}) ->
-  io_lib:format("Cannot render template ~s: ~p", [Path, Reason]);
-format_error({read_file, Reason, Path}) ->
-  io_lib:format("Cannot read file ~s: ~p", [Path, Reason]);
-format_error({write_file, Reason, Path}) ->
-  io_lib:format("Cannot write file ~s: ~p", [Path, Reason]);
-format_error(Reason) ->
-  io_lib:format("~p", [Reason]).

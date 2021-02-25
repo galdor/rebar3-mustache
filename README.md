@@ -1,11 +1,11 @@
 # Project
 This repository contains a [Rebar3](http://rebar3.org) plugin to generate
-files based on template mustaches.
+files based on [Mustache](https://mustache.github.io) templates.
 
 # Usage
 The `rebar3 mustache generate` command will render all templates defined in
-the configuration. For each OTP application, the plugin will render templates
-once for each profile specified.
+the configuration. The plugin will render templates once for each profile
+specified.
 
 The configuration is stored in `rebar.config`:
 
@@ -27,16 +27,16 @@ of up to three layers:
   ```erlang
   #{rebar => Data}.
   ```
-  Where `Data` contains the following entries:
-  - `app`: the name of the OTP application.
-  - `profile`: the name of the current Rebar3 profile.
+  - `Data`: an object containing the following members:
+    - `app`: the name of the OTP application, for single application projects.
+    - `profile`: the name of the current Rebar3 profile.
 - Global template data:
   ```erlang
-  #{AppName => Data}.
+  #{Key => Data}.
   ```
-  Where `AppName` is the name of the OTP applicataion and `Data` the set of
-  data loaded from the file reference by the `template_data_path`
-  configuration entry.
+  - `Key`: the name of the OTP application for single application projects, or the value of the `template_data_key` configuration entry for multi-application projects.
+  - `Data`: the set of data loaded from the file referenced by the
+    `template_data_path` configuration entry.
 - Template data: the set of data provided with the `data` template option.
 
 These layers are merged before rendering.
@@ -55,6 +55,8 @@ to `#{b => 2}`, the context will be:
 - `template_data_path`: the path of a file containing one or more Erlang maps;
   all maps will be merged during loading. Note that this path is treated as a
   template, using Rebar data as context.
+- `template_data_key`: for multi-application projects, an atom used as key for
+  global template data.
 - `templates` a list of templated files to generate; each entry is a tuple
   whose first element is the path of the template file, and whose second
   element is a set of template options.
