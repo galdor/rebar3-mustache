@@ -48,8 +48,15 @@ init(State) ->
         {ok, rebar_state:t()} | {error, string()} | {error, {module(), any()}}.
 do(State) ->
   Apps = case rebar_state:current_app(State) of
-           undefined -> rebar_state:project_apps(State);
-           App -> [App]
+           undefined ->
+             ProjectApps = rebar_state:project_apps(State),
+             Names = lists:map(fun rebar_app_info:name/1, ProjectApps),
+             rebar_api:debug("Project applications: ~s", [Names]),
+             ProjectApps;
+           App ->
+             rebar_api:debug("Current application: ~s",
+                             [rebar_app_info:name(App)]),
+             [App]
          end,
   Profiles = rebar_state:current_profiles(State),
   try
